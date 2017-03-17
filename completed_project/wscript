@@ -1,0 +1,57 @@
+import re
+import subprocess
+from waflib import Task
+
+def options(ctx):
+    ctx.load('compiler_cxx')
+
+def configure(ctx):
+    ctx.load('compiler_cxx')
+
+def build(bld):
+    bld(features='cxx cxxprogram', source=bld.path.ant_glob(['primes.cpp']), target='primes')
+
+    t = run_primes_task(env = bld.env)
+    t.set_inputs(bld.path.get_bld().make_node('primes'))
+    t.set_outputs(bld.path.get_bld().make_node('primes.txt'))
+    bld.add_to_group(t)
+
+    t = our_magic_primes_html_task(env=bld.env)
+    t.set_inputs(bld.path.get_bld().make_node('primes.txt'))
+    t.set_outputs(bld.path.get_bld().make_node('webroot/primes.html'))
+    bld.add_to_group(t)
+
+    bld(color='CYAN', rule='cp ${SRC} ${TGT}', source='style.css', target='webroot/style.css')
+
+
+class run_primes_task(Task.Task):
+    color = 'PINK'
+    def keyword(self):
+        return 'Generating'
+    def __str__(self):
+        node = self.outputs[0]
+        return node.path_from(node.ctx.launch_node())
+    def run(self):
+        p = subprocess.Popen([self.inputs[0].abspath(), '100'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        if stderr:
+            Logs.warn(stderr)
+        if p.returncode != 0:
+            bld.fatal("primes tool failed with status %d" % (p.returncode,))
+        self.outputs[0].parent.mkdir()
+        self.outputs[0].write(stdout)
+
+
+class our_magic_primes_html_task(Task.Task):
+    color = 'GREEN'
+    def keyword(self):
+        return 'Generating'
+    def __str__(self):
+        node = self.outputs[0]
+        return node.path_from(node.ctx.launch_node())
+    def run(self):
+        primes = self.inputs[0].read()
+        primes = filter(None, re.split(r'[^0-9]+', primes))
+        self.outputs[0].parent.mkdir()
+        self.outputs[0].write('''<html><head><link rel="stylesheet" href="style.css"><title>Primes</title></head><body><h1>Primes!</h1><ul class="primes">'''
+                              + ''.join(['<li>%s</li>' % (prime,) for prime in primes]) + '''</ul></body></html>''')

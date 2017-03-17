@@ -1,0 +1,16 @@
+" Localvimrc
+"
+" Used by projects to make sure various text
+" settings are standard when using Vim.
+
+" Turn on automatic indenting:
+set ai sw=4
+
+" If tabs do exist, they should be 4 spaces wide:
+set ts=4
+
+" If tabs do exist, expand them to spaces.
+set expandtab
+
+" Set the page gutter:
+set colorcolumn=120
